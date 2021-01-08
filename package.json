@@ -1,0 +1,29 @@
+{
+  "name": "desso",
+  "version": "1.0.0",
+  "description": "",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "chain": "ganache-cli",
+
+    "_auth": "node ./src/authority.js",
+    "_client": "node ./src/client.js",
+    "_test": "node ./test/test.js",
+
+    "auth": "npm run _auth localhost 8545",
+    "client": "npm run _client localhost 8545",
+    "test": "npm run _test localhost 8545",
+
+    "compile": "truffle compile",
+    "deploy": "truffle deploy",
+    "console": "truffle console"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@truffle/contract": "^4.3.4",
+    "web3": "^1.3.1"
+  }
+}
