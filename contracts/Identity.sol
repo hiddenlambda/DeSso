@@ -28,6 +28,12 @@ contract BaseIdentity is Identity, RelationshipColl {
 
     mapping(bytes32 => bool) relationshipSeen;
 
+    constructor (Relationship[] memory _relationships) {
+        registerAll(_relationships);
+    }
+
+    event Error(string _msg);
+
     modifier onlyWithAccess(
         IdentityAction action,
         Relationship accessor,
@@ -35,13 +41,26 @@ contract BaseIdentity is Identity, RelationshipColl {
         bytes32 r,
         bytes32 s
     ) {
-        require(action.identity() == this);
-        require(has(accessor));
-
-        bytes32 _hash = keccak256(abi.encode(address(action)));
-        address withAccess = ecrecover(_hash, v, r, s);
-        require(accessor.proofAddress() == withAccess);
-        _;
+        if (action.identity() != this) {
+            emit Error('This action is for another identity');
+        } else if (!has(accessor)) {
+            emit Error('This accessor is not recognized');
+        } else {
+            bytes32 messageHash = keccak256(abi.encodePacked(address(action)));
+            bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+            bytes32 hashed = keccak256(abi.encodePacked(prefix, messageHash));
+            address actualAddress = ecrecover(hashed, v, r, s);
+            if (accessor.proofAddress() != actualAddress) {
+                emit Error(string(abi.encodePacked(
+                    "This accessor does not match the signature. details: ",
+                    address(action), " ",
+                    hashed, " ",
+                    actualAddress
+                )));
+            } else {
+                _;
+            }
+        }
     }
 
     function register(Relationship relation) internal override {

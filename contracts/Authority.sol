@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.4;
 
-import "./Identity.sol";
+import "./Relationship.sol";
 
-interface Authority is Identity {
+interface Authority {
     // to identify message sender in callback
     function owner() external view returns (address);
 
     function seekApproval(Relationship relationship) external;
 }
 
-contract BaseAuthority is BaseIdentity, Authority {
+contract BaseAuthority is Authority {
     address public override owner;
 
-    constructor() BaseIdentity() {
+    constructor() {
         owner = msg.sender;
     }
 

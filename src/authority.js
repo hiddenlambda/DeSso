@@ -1,8 +1,6 @@
 const contract = require('@truffle/contract');
 const BaseAuthority = require('../build/contracts/BaseAuthority.json');
-const web3 = require('./web3');
-
-console.log(web3);
+const web3 = require('../commons/web3');
 
 const authorityContract = contract(BaseAuthority);
 authorityContract.setProvider(web3.currentProvider);
