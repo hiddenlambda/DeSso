@@ -6,6 +6,8 @@ import "./Relationship.sol";
 import "./IdentityAction.sol";
 
 interface Identity {
+    enum ActionKind {Register, UnRegister, RegisterAll, UnRegisterAll}
+
     function relationshipsTo(Authority auth)
         external
         view
@@ -28,7 +30,7 @@ contract BaseIdentity is Identity, RelationshipColl {
 
     mapping(bytes32 => bool) relationshipSeen;
 
-    constructor (Relationship[] memory _relationships) {
+    constructor(Relationship[] memory _relationships) {
         registerAll(_relationships);
     }
 
@@ -42,24 +44,49 @@ contract BaseIdentity is Identity, RelationshipColl {
         bytes32 s
     ) {
         if (action.identity() != this) {
-            emit Error('This action is for another identity');
+            emit Error("This action is for another identity");
         } else if (!has(accessor)) {
-            emit Error('This accessor is not recognized');
+            emit Error("This accessor is not recognized");
+        } else if (accessor.proofAddress() != recoverAddress(action, v, r, s)) {
+            emit Error("This accessor does not match the signature. details");
         } else {
-            bytes32 messageHash = keccak256(abi.encodePacked(address(action)));
-            bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-            bytes32 hashed = keccak256(abi.encodePacked(prefix, messageHash));
-            address actualAddress = ecrecover(hashed, v, r, s);
-            if (accessor.proofAddress() != actualAddress) {
-                emit Error(string(abi.encodePacked(
-                    "This accessor does not match the signature. details: ",
-                    address(action), " ",
-                    hashed, " ",
-                    actualAddress
-                )));
-            } else {
-                _;
-            }
+            _;
+        }
+    }
+
+    function recoverAddress(
+        IdentityAction action,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal pure returns (address) {
+        bytes32 messageHash = keccak256(abi.encodePacked(address(action)));
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 hashed = keccak256(abi.encodePacked(prefix, messageHash));
+        return ecrecover(hashed, v, r, s);
+    }
+
+    function handle(
+        IdentityAction action,
+        Relationship accessor,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override onlyWithAccess(action, accessor, v, r, s) {
+        doAction(action);
+    }
+
+    function doAction(IdentityAction action) internal {
+        if (action.kind() == ActionKind.Register) {
+            register(action.relationship());
+        } else if (action.kind() == ActionKind.UnRegister) {
+            unregister(action.relationship());
+        } else if (action.kind() == ActionKind.RegisterAll) {
+            registerAll(action.relationshipBulk());
+        } else if (action.kind() == ActionKind.UnRegisterAll) {
+            unregisterAll(action.relationshipBulk());
+        } else {
+            revert();
         }
     }
 
@@ -77,7 +104,9 @@ contract BaseIdentity is Identity, RelationshipColl {
             // but for small, read-heavy data, this is quite sensible
             address authAddress = address(relation.authority());
             for (uint256 i = 0; i < relationships[authAddress].length; i++) {
-                if (getHash(relation) == getHash(relationships[authAddress][i])) {
+                if (
+                    getHash(relation) == getHash(relationships[authAddress][i])
+                ) {
                     uint256 lastIndex = relationships[authAddress].length - 1;
                     relationships[authAddress][i] = relationships[authAddress][
                         lastIndex
@@ -86,30 +115,6 @@ contract BaseIdentity is Identity, RelationshipColl {
                     break;
                 }
             }
-        }
-    }
-
-    function handle(
-        IdentityAction action,
-        Relationship accessor,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external override onlyWithAccess(action, accessor, v, r, s) {
-        doAction(action);
-    }
-
-    function doAction(IdentityAction action) internal {
-        if (action.isRegister()) {
-            register(action.relationship());
-        } else if (action.isUnRegister()) {
-            unregister(action.relationship());
-        } else if (action.isRegisterAll()) {
-            registerAll(action.relationshipBulk());
-        } else if (action.isUnRegisterAll()) {
-            unregisterAll(action.relationshipBulk());
-        } else {
-            revert();
         }
     }
 

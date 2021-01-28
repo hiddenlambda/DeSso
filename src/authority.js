@@ -9,6 +9,7 @@ main = async () => {
     authorityContractInstance = await authorityContract.deployed();
     authorityContractInstance.NewRequest().on('data', (event => {
         console.log(event);
+        // todo update relationship proof address with newly generated
     }));
 };
 
